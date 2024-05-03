@@ -1,0 +1,339 @@
+---
+title: "2024 Data Call Outlier QA"
+author: "Scarlet Sands-Bliss"
+date: "2024-01-18"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+*Note: run this code following 2023-sdwis_04_samplingresults.Rmd in a project environment to have all data frames loaded.*
+
+### **1. Visualizations**
+
+#### Arsenic (mcl: 10ug/L)
+
+*Flag over 300ug/L*
+
+```{r}
+# Histogram
+subset_arsenic <- subset(wql_9, AnalyteCode == 1005)
+
+# Boxplot
+ggplot(subset_arsenic, aes(x = factor(1005), y = Concentration)) +
+  geom_boxplot(outlier.shape = NA) +  # Suppress default outliers
+  geom_jitter(position = position_jitter(width = 0.3), color = "red", size = 1) +  # Display outliers as red points
+  geom_hline(yintercept = 10, linetype = "dashed", color = "darkblue", size = 0.8) +  
+  labs(title = "Arsenic: Box Plot with Outliers",
+       x = "AnalyteCode",
+       y = "Concentration") +
+  scale_x_discrete(breaks = factor(1005)) +  # Set x-axis to a single number
+  theme_minimal()
+
+ggsave("./figures-tables/plot_arsenic.png", plot = last_plot(), width = 8, height = 6, units = "in", dpi = 300)
+
+# Examining summary stats for Arsenic
+describe(wql_9$Concentration[wql_9$AnalyteCode == 1005])
+table(wql_9$DetectionLimit[wql_9$AnalyteCode==1005]) # Detection limit is 2
+# I would just assume the outlier > 800 should be removed
+
+# Flag potential errors
+arsenic_flag <- subset_arsenic %>% mutate(Flag = case_when(Concentration <= 100 ~ 0,
+                                                    Concentration > 100 ~ 1))
+```
+
+#### Atrazine (mcl: 1ug/L)
+
+*No flag data frame*
+
+```{r}
+# Histogram
+subset_atrazine <- subset(wql_9, AnalyteCode == 2050)
+
+# Boxplot
+ggplot(subset_atrazine, aes(x = factor(2050), y = Concentration)) +
+  geom_boxplot(outlier.shape = NA) +  # Suppress default outliers
+  geom_jitter(position = position_jitter(width = 0.3), color = "red", size = 1) +  # Display outliers as red points
+    geom_hline(yintercept = 1, linetype = "dashed", color = "darkblue", size = 0.8) +  
+  labs(title = "Atrazine: Box Plot with Outliers",
+       x = "AnalyteCode",
+       y = "Concentration") +
+  scale_x_discrete(breaks = factor(2050)) +  # Set x-axis to a single number
+  theme_minimal()
+
+ggsave("./figures-tables/plot_atrazine.png", plot = last_plot(), width = 8, height = 6, units = "in", dpi = 300)
+
+# Examining summary stats for atrazine
+describe(wql_9$Concentration[wql_9$AnalyteCode == 2050])
+unique(subset_atrazine$Concentration) # Only value 0.25. Is this an issue?
+
+unique(wql$result[wql$analyte_code == 2050])
+
+# Atrazine inspection: all values in original data set were NA. Why?
+atr_orig <- subset(wql, analyte_code == 2050)
+
+# Flag potential errors - none here. All are zero. Confirming in original SDWIS file.
+atrazine_test <- subset(wql_0, Analyte.Code == 2050)
+table(atrazine_test$Result, useNA = "always")
+table(atrazine_test$MCL[atrazine_test$Analyte.Code==2050]) # MCL is 1ug/L
+
+
+```
+
+#### DEHP (mcl: 4ug/L)
+
+*No flag data frame*
+
+```{r}
+# Subset
+subset_dehp <- subset(wql_9, AnalyteCode == 2039)
+
+# Boxplot
+
+ggplot(subset_dehp, aes(x = factor(2039), y = Concentration)) +
+  geom_boxplot(outlier.shape = NA) +  # Suppress default outliers
+  geom_jitter(position = position_jitter(width = 0.3), color = "red", size = 1) +  # Display outliers as red points
+    geom_hline(yintercept = 4, linetype = "dashed", color = "darkblue", size = 0.8) +  
+  labs(title = "DEHP: Box Plot with Outliers",
+       x = "AnalyteCode",
+       y = "Concentration") +
+  scale_x_discrete(breaks = factor(2039)) +  # Set x-axis to a single number
+  theme_minimal()
+
+ggsave("./figures-tables/plot_DEHP.png", plot = last_plot(), width = 8, height = 6, units = "in", dpi = 300)
+
+# Examining summary stats 
+describe(wql_9$Concentration[wql_9$AnalyteCode == 2039])
+table(wql_9$DetectionLimit[wql_9$AnalyteCode==2039]) # Detection limit is 3
+print(min(subset_dehp$Concentration))
+print(max(subset_dehp$Concentration))
+table(subset_dehp$NonDetectFlag) # All but 4 were NDs
+
+
+# Flag potential errors - none here. All are NDs except 4 that are all < 10. Confirming in original SDWIS file.
+dehp_test <- subset(wql_0, Analyte.Code == 2039)
+table(dehp_test$Result, useNA = "always")
+table(dehp_test$MCL[dehp_test$Analyte.Code==2039]) # MCL is 4ug/L
+
+```
+
+#### Nitrate (1040, mcl: 10ug/L)
+
+*Flags over 50ug/L*
+
+```{r}
+# Density Plot
+subset_nitrate <- subset(wql_9, AnalyteCode==1040)
+
+# Boxplot
+ggplot(subset_nitrate, aes(x = factor(1040), y = Concentration)) +
+  geom_boxplot(outlier.shape = NA) +  # Suppress default outliers
+  geom_jitter(position = position_jitter(width = 0.3), color = "red", size = 1) +  # Display outliers as red points
+    geom_hline(yintercept = 10, linetype = "dashed", color = "darkblue", size = 0.8) +  
+  labs(title = "Nitrate: Box Plot with Outliers",
+       x = "AnalyteCode",
+       y = "Concentration") +
+  scale_x_discrete(breaks = factor(1040)) +  # Set x-axis to a single number
+  theme_minimal()
+
+ggsave("./figures-tables/plot_nitrate.png", plot = last_plot(), width = 8, height = 6, units = "in", dpi = 300)
+
+# Examining summary stats
+describe(wql_9$Concentration[wql_9$AnalyteCode %in% nitrate_as_n_code])
+print(min(subset_nitrate$Concentration))
+print(max(subset_nitrate$Concentration))
+
+# Flag potential errors
+nitrate_flag <- subset_nitrate %>% mutate(Flag = case_when(Concentration <= 50 ~ 0,
+                                                    Concentration > 50 ~ 1))
+
+# Several high balues in the 50-80 range
+```
+
+#### PCE (mcl: 5 ug/L)
+
+*Flag for \> 100, but many high values ranging from 5-200*
+
+```{r}
+# Density Plot
+subset_pce <- subset(wql_9, AnalyteCode == 2987)
+
+# Boxplot
+
+ggplot(subset_pce, aes(x = factor(2987), y = Concentration)) +
+  geom_boxplot(outlier.shape = NA) +  # Suppress default outliers
+  geom_jitter(position = position_jitter(width = 0.3), color = "red", size = 1) +  # Display outliers as red points
+    geom_hline(yintercept = 5, linetype = "dashed", color = "darkblue", size = 0.8) +  
+  labs(title = "PCE: Box Plot with Outliers",
+       x = "AnalyteCode",
+       y = "Concentration") +
+  scale_x_discrete(breaks = factor(2987)) +  # Set x-axis to a single number
+  theme_minimal()
+
+ggsave("./figures-tables/plot_PCE.png", plot = last_plot(), width = 8, height = 6, units = "in", dpi = 300)
+
+# Examining summary stats
+describe(wql_9$Concentration[wql_9$AnalyteCode == 2987])
+table(wql_9$DetectionLimit[wql_9$AnalyteCode==2987]) # Detection limit is 0.5
+print(min(subset_pce$Concentration))
+print(max(subset_pce$Concentration))
+table(subset_pce$NonDetectFlag) # Many non-detects.
+
+# Examining original SDWIS file
+pce_test <- subset(wql_0, Analyte.Code == 2987)
+table(pce_test$Result, useNA = "always") # Majority ND
+table(pce_test$MCL[pce_test$Analyte.Code==2987]) # MCL is 5 ug/L
+
+# Flag potential errors
+pce_flag <- subset_pce %>% mutate(Flag = case_when(Concentration <= 100 ~ 0,
+                                                    Concentration > 100 ~ 1))
+
+# Many high values in 25-200 range.
+
+
+
+```
+
+#### Radium (Combined 226 & 228, mcl: 5ug/L)
+
+*No flag data frame*
+
+```{r}
+# Density Plot
+subset_rad <- subset(wql_9, AnalyteCode == 4010)
+
+# Boxplot
+ggplot(subset_rad, aes(x = factor(4010), y = Concentration)) +
+  geom_boxplot(outlier.shape = NA) +  # Suppress default outliers
+  geom_jitter(position = position_jitter(width = 0.3), color = "red", size = 1) +  # Display outliers as red points
+    geom_hline(yintercept = 5, linetype = "dashed", color = "darkblue", size = 0.8) +  
+  labs(title = "Radium: Box Plot with Outliers",
+       x = "Analyte Code",
+       y = "Concentration") +
+  scale_x_discrete(breaks = factor(4010)) +  # Set x-axis to a single number
+  theme_minimal()
+
+ggsave("./figures-tables/plot_radium.png", plot = last_plot(), width = 8, height = 6, units = "in", dpi = 300)
+
+# Examining summary stats
+describe(wql_9$Concentration[wql_9$AnalyteCode == 4010])
+print(min(subset_rad$Concentration))
+print(max(subset_rad$Concentration))
+table(subset_rad$NonDetectFlag) # Al but 4 were non-detects. 
+
+# Examining original SDWIS file
+rad_test <- subset(wql_0, Analyte.Code == 4010)
+table(rad_test$Result, useNA = "always") # Majority ND
+table(rad_test$MCL[rad_test$Analyte.Code==4010]) # MCL is 5 ug/L
+
+```
+
+#### TCE (mcl: 5ug/L)
+
+*Flag for \> 100ug/L*
+
+```{r}
+# Density Plot
+subset_tce <- subset(wql_9, AnalyteCode == 2984)
+
+# Boxplot
+ggplot(subset_tce, aes(x = factor(2984), y = Concentration)) +
+  geom_boxplot(outlier.shape = NA) +  # Suppress default outliers
+  geom_jitter(position = position_jitter(width = 0.3), color = "red", size = 1) +  # Display outliers as red points
+    geom_hline(yintercept = 5, linetype = "dashed", color = "darkblue", size = 0.8) +  
+  labs(title = "TCE: Box Plot with Outliers",
+       x = "Analyte Code",
+       y = "Concentration") +
+  scale_x_discrete(breaks = factor(2984)) +  # Set x-axis to a single number
+  theme_minimal()
+
+ggsave("./figures-tables/plot_TCE.png", plot = last_plot(), width = 8, height = 6, units = "in", dpi = 300)
+
+# Examining summary stats
+describe(wql_9$Concentration[wql_9$AnalyteCode == 2984])
+print(min(subset_tce$Concentration))
+print(max(subset_tce$Concentration))
+table(subset_tce$NonDetectFlag) # More detect than ND
+
+# Examining original SDWIS file
+tce_test <- subset(wql_0, Analyte.Code == 2984)
+table(tce_test$Result, useNA = "always") 
+table(tce_test$MCL[tce_test$Analyte.Code==2984]) # MCL is 5 ug/L
+
+# Flag potential errors
+tce_flag <- subset_tce %>% mutate(Flag = case_when(Concentration <= 100 ~ 0,
+                                                    Concentration > 100 ~ 1))
+# Range from 0.25 to 390, decent number of scattered values over 100
+
+```
+
+#### Uranium (mcl: 30ug/L)
+
+*Flag for \> 200ug/L*
+
+```{r}
+# Histogram
+subset_uranium <- subset(wql_9, AnalyteCode == 4006)
+
+# Box plot
+ggplot(subset_uranium, aes(x = factor(4006), y = Concentration)) +
+  geom_boxplot(outlier.shape = NA) +  # Suppress default outliers
+  geom_jitter(position = position_jitter(width = 0.3), color = "red", size = 1) +  # Display outliers as red points
+    geom_hline(yintercept = 30, linetype = "dashed", color = "darkblue", size = 0.8) +  
+  labs(title = "Uranium: Box Plot with Outliers",
+       x = "AnalyteCode",
+       y = "Concentration") +
+  scale_x_discrete(breaks = factor(4006)) +  # Set x-axis to a single number
+  theme_minimal()
+
+ggsave("./figures-tables/plot_uranium.png", plot = last_plot(), width = 8, height = 6, units = "in", dpi = 300)
+
+# Examining summary stats for Uranium
+describe(wql_9$Concentration[wql_9$AnalyteCode == 4006])
+
+# Examining original SDWIS file
+uranium_test <- subset(wql_3, analyte_code == 4006)
+table(uranium_test$mcl[uranium_test$analyte_code==4006]) # MCL is 5 ug/L
+
+# Flag potential errors
+uranium_flag <- subset_uranium %>% mutate(Flag = case_when(Concentration <= 100 ~ 0,
+                                                    Concentration > 100 ~ 1))
+
+# Many values over 200, not sure about. The value near 1000 is likely error.
+
+
+
+```
+
+### 2. Merge to potential outliers List
+
+```{r}
+# Create a list of data frames
+list_of_dataframes <- list(arsenic_flag, nitrate_flag, uranium_flag)
+
+# Bind the rows of all data frames together
+outliers <- bind_rows(list_of_dataframes)
+
+# Filter rows where Flag is 1
+outliers <- outliers %>%
+  filter(Flag == 1) %>%
+  select(RowIdentifier,
+         PWSIDNumber,
+         Year,
+         AnalyteCode,
+         ConcentrationUnits,
+         Concentration,
+         DateSampled,
+         SamplePointID,
+         DetectionLimit,
+         NonDetectFlag)
+
+table(outliers$SamplePointID) 
+length(unique(outliers$SamplePointID)) # All values just from 22 sampling points
+
+
+# Save as CSV
+write.csv(outliers, sprintf("data/clean-data/extreme-values_%i.csv", year_for_datacall)) 
+```
