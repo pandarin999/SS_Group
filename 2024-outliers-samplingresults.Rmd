@@ -9,6 +9,12 @@ output: html_document
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
+```{r}
+library(dplyr)
+library(ggplot2)
+library(tidyverse)
+```
+
 *Note: run this code following 2023-sdwis_04_samplingresults.Rmd in a project environment to have all data frames loaded.*
 
 ### **1. Visualizations**
